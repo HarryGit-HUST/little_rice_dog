@@ -4,6 +4,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float32
 from cv_bridge import CvBridge
+from rclpy.qos import qos_profile_sensor_data
 import cv2
 import numpy as np
 
@@ -11,7 +12,12 @@ class VisionNode(Node):
     def __init__(self):
         super().__init__('vision_node')
         # 订阅狗的眼睛
-        self.sub_image = self.create_subscription(Image, '/cyberdog_camera/image_raw', self.image_callback, 10)
+        # 订阅狗的眼睛 (务必使用 sensor_data QoS，否则接不到 Gazebo 的视频流！)
+        self.sub_image = self.create_subscription(
+            Image, 
+            '/cyberdog_camera/image_raw', 
+            self.image_callback, 
+            qos_profile_sensor_data)
         # 发布给大脑的“偏差”数据
         self.pub_error = self.create_publisher(Float32, '/perception/line_error', 10)
         
