@@ -4,66 +4,63 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float32
 from cv_bridge import CvBridge
-from rclpy.qos import qos_profile_sensor_data
 import cv2
 import numpy as np
+from rclpy.qos import qos_profile_sensor_data
 
 class VisionNode(Node):
     def __init__(self):
         super().__init__('vision_node')
-        # 订阅狗的眼睛
-        # 订阅狗的眼睛 (务必使用 sensor_data QoS，否则接不到 Gazebo 的视频流！)
+        # 订阅相机图像 (注意：必须使用 sensor_data QoS，否则接不到 Gazebo 图像流)
         self.sub_image = self.create_subscription(
-            Image, 
-            '/cyberdog_camera/image_raw', 
-            self.image_callback, 
-            qos_profile_sensor_data)
-        # 发布给大脑的“偏差”数据
-        self.pub_error = self.create_publisher(Float32, '/perception/line_error', 10)
+            Image, '/cyberdog_camera/image_raw', self.image_callback, qos_profile_sensor_data)
         
+        # 发布计算好的偏差
+        self.pub_error = self.create_publisher(Float32, '/perception/line_error', 10)
         self.bridge = CvBridge()
-        self.get_logger().info("视觉感知节点 [Vision Node] 启动，正在寻找黄线...")
+        self.get_logger().info("👁️ 视觉节点已启动，盯紧黄线中...")
 
     def image_callback(self, msg):
         try:
-            # 1. 转化为 OpenCV 图像
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-            height, width, _ = cv_image.shape
-
-            # 2. 截取图像下半部分 (ROI) 以消除远处干扰
-            roi = cv_image[int(height/2):height, 0:width]
+            h, w, _ = cv_image.shape
             
-            # 3. 提取黄色 (赛道黄线的 HSV 范围，需根据实际光照微调)
+            # 1. 裁剪感兴趣区域 (ROI)：只看画面下半部分，避免被远处的黄色背景干扰
+            roi = cv_image[int(h/2):h, :]
+            
+            # 2. 颜色提取：转到 HSV 空间找赛道黄
             hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
             lower_yellow = np.array([20, 100, 100])
             upper_yellow = np.array([40, 255, 255])
             mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+            
+            # 为了平滑，稍微做个形态学滤波
+            mask = cv2.erode(mask, None, iterations=2)
+            mask = cv2.dilate(mask, None, iterations=2)
 
-            # 4. 寻找最大轮廓的质心 (重力中心)
+            # 3. 寻找黄线的质心
             M = cv2.moments(mask)
             if M['m00'] > 0:
                 cx = int(M['m10']/M['m00'])
                 cy = int(M['m01']/M['m00'])
                 
-                # 计算偏差：目标中心 - 屏幕中心
-                # error > 0: 线在右边，狗需要右转; error < 0: 线在左边，狗需要左转
-                error = float(cx - (width / 2))
+                # 计算偏差：目标中心减去画面中心
+                # 正数表示线在右边，负数表示线在左边
+                error = float(cx - (w / 2))
+                self.pub_error.publish(Float32(data=error))
                 
-                # 发布给大脑
-                error_msg = Float32()
-                error_msg.data = error
-                self.pub_error.publish(error_msg)
-
-                # --- 调试可视化 (仅在电脑端测试用) ---
-                cv2.circle(roi, (cx, cy), 10, (0, 0, 255), -1)
-                cv2.imshow("Yellow Line Tracker", roi)
-                cv2.waitKey(1)
+                # [调试用] 绘制中心点
+                cv2.circle(roi, (cx, cy), 10, (255, 0, 0), -1)
             else:
-                # 没找到黄线
-                self.pub_error.publish(Float32(data=999.0)) # 999 作为一个特殊标记符
-
+                # 画面里没看到黄线，发个极值 999 告诉大脑盲走
+                self.pub_error.publish(Float32(data=999.0))
+            
+            # [调试用] 弹窗显示，确定你的 HSV 参数是对的
+            cv2.imshow("Dog Vision ROI", roi)
+            cv2.waitKey(1)
+            
         except Exception as e:
-            self.get_logger().error(f"视觉处理异常: {e}")
+            self.get_logger().error(f"图像处理崩了: {e}")
 
 def main(args=None):
     rclpy.init(args=args)
