@@ -8,7 +8,7 @@ SIM_WS="/home/cyberdog_sim"
 # 2. 你的比赛代码工作空间路径 (可修改)
 RACE_WS="/home/cyberdog_sim/src/my_race_code"
 # 3. 视觉节点 (包名 + 节点名)
-VISION_NODE="race_core vision_node"
+VISION_NODE="race_core yellow_line_detector"
 # 4. 主控大脑节点 (包名 + 节点名)
 MAIN_NODE="race_core main_brain"
 

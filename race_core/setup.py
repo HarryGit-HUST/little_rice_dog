@@ -20,8 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            # 格式：'你在终端敲的名字 = 文件夹名.文件名:执行的函数名'
-            'vision_node = race_core.vision_node:main',
+            'vision_node = race_core.vision_node:main', # 如果你还有旧代码，留着备用
+            'yellow_line_detector = race_core.yellow_line_detector:main',
             'main_brain = race_core.main_brain:main'
         ],
     },
