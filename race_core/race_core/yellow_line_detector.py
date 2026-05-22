@@ -128,7 +128,7 @@ class YellowLineDetector(Node):
             # ====================================================
             if not turn_triggered:
                 # 只截取最底部的 40% 算中心，屏蔽中远景的干扰
-                near_mask = mask[int(roi_h*0.6):roi_h, :]
+                near_mask = mask[int(roi_h*0.75):roi_h, :]
                 near_cx = self.get_center(near_mask, roi_w)
                 
                 if near_cx is not None:
