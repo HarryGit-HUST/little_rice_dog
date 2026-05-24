@@ -46,7 +46,7 @@ echo "✅ 2/5 小脑控制节点启动完成"
 # 终端3: 🌟【新增】底盘位姿广播器 (提供 /pose 话题，由队友编写)
 # ======================
 tmux split-window -v -t $SESSION -p 75
-tmux send-keys -t $SESSION:0.2 "source /opt/ros/galactic/setup.bash && source ${SIM_WS}/install/setup.bash && python3 ${UTILS_DIR}/gazebo/scripts/pose_broadcaster.py" C-m
+tmux send-keys -t $SESSION:0.2 "source /opt/ros/galactic/setup.bash && source ${SIM_WS}/install/setup.bash && python3 ${RACE_WS}/race_core/race_core/pose_broadcaster.py" C-m
 
 sleep 2
 echo "✅ 3/5 底盘位姿广播器启动完成 (已提供 /pose)"
