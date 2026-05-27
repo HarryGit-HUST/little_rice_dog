@@ -28,10 +28,10 @@ killall -9 gzserver gzclient > /dev/null 2>&1
 # 终端1: 启动 Gazebo 仿真（核心，必须最先启动）
 # ======================
 tmux new-session -d -s $SESSION
-tmux send-keys -t $SESSION:0 "source /opt/ros/galactic/setup.bash && source ${SIM_WS}/install/setup.bash && ros2 launch cyberdog_gazebo race_gazebo.launch.py" C-m
+tmux send-keys -t $SESSION:0 "source /opt/ros/galactic/setup.bash && source ${SIM_WS}/install/setup.bash && ros2 launch cyberdog_gazebo race_gazebo.launch.py paused:=false" C-m
 
-sleep 5
-echo "✅ 1/5 Gazebo 物理世界启动完成"
+sleep 8
+echo "✅ 1/5 Gazebo 物理世界启动完成 (已自动解除暂停)"
 
 # ======================
 # 终端2: 小脑控制（依赖Gazebo）
@@ -39,7 +39,7 @@ echo "✅ 1/5 Gazebo 物理世界启动完成"
 tmux split-window -h -t $SESSION
 tmux send-keys -t $SESSION:0.1 "source /opt/ros/galactic/setup.bash && source ${SIM_WS}/install/setup.bash && ros2 launch cyberdog_gazebo cyberdog_control_launch.py" C-m
 
-sleep 3
+sleep 5
 echo "✅ 2/5 小脑控制节点启动完成"
 
 # ======================
@@ -63,6 +63,19 @@ echo "✅ 4/5 视觉节点启动完成"
 # ======================
 # 终端5: 主控大脑（最后启动，接管全局）
 # ======================
+# 确保 cyberdog_control 已经在运行，否则主控大脑的心跳包无人接收
+echo "⏳ 等待 cyberdog_control 就绪..."
+for i in $(seq 1 30); do
+    if ps aux | grep -v grep | grep -q "cyberdog_control"; then
+        echo "✅ cyberdog_control 已就绪 (耗时 ${i}s)"
+        break
+    fi
+    sleep 1
+done
+if ! ps aux | grep -v grep | grep -q "cyberdog_control"; then
+    echo "❌ cyberdog_control 启动失败！请检查控制终端"
+    exit 1
+fi
 tmux split-window -v -t $SESSION -p 50
 tmux send-keys -t $SESSION:0.4 "source /opt/ros/galactic/setup.bash && source ${SIM_WS}/install/setup.bash && source ${RACE_WS}/install/setup.bash && ros2 run ${MAIN_NODE}" C-m
 

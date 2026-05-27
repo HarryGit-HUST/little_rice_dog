@@ -1,48 +1,63 @@
 #!/usr/bin/env python3
 import math
+import time
 
 class Task3_CurveCharge:
     def __init__(self, dog_instance, logger):
         self.dog = dog_instance
         self.logger = logger
-        
-        # 任务三竞速参数
-        self.kp_vision = 1.5  # 曲线竞速，转向增益可以稍微大一些，提升弯道响应
-        self.smoothed_error = 0.0
-        self.filter_alpha = 0.3
         self.state = "INIT"
+        
+        self.kp_vision = 1.3  # 曲线要求灵敏，转向增益拉高
+        self.smoothed_error = 0.0
+        
+        # 🌟 根据任务规划，设定第三赛段的终点绝对坐标
+        self.target_x = 3.0
+        self.target_y = 7.0
+        self.end_threshold = 0.4  # 距离目标点 0.4 米以内判定为到达
+        
+        self.logger.info("🏎️ 任务三：[高速纯追踪 + 绝对坐标结束判定] 已装载！")
 
     def execute(self, p_data):
-        """
-        任务三主循环：沿着黄线中点一直走，不考虑急弯，不考虑结束
-        """
-        line_z = p_data['line_z']
-        line_error = p_data['line_error']
+        line_z = p_data.get('line_z', 0.0)
+        line_error = p_data.get('line_error', 0.0)
+        cx = p_data.get('cx')
+        cy = p_data.get('cy')
         
+        if cx is None or cy is None:
+            return False
+
         line_valid = (line_z == 1.0)
 
         if self.state == "INIT":
-            # 曲线路段是平地，不需要 8cm 的夸张高度，恢复默认的 6cm 以减小颠簸
-            self.dog.set_step_height(0.05)
-            # 确保处于标准小跑步态
-            self.dog.set_gait(9)
-            self.logger.info("🚀 [Task 3] 曲线冲锋初始化完成！已切换为平地高速步态。")
+            try:
+                from move.core.types import GAIT_TROT_FAST
+                self.dog.set_gait(GAIT_TROT_FAST)
+            except Exception:
+                self.dog.set_gait(9)
+                
+            self.dog.set_step_height(0.04) 
+            self.logger.info("⚡ [Task 3] 切入贴地极速步态，开始冲刺！")
             self.state = "RUNNING"
 
-        # 正常巡线
-        if line_valid:
-            vx = 0.3  # 平地曲线，速度拉满到 0.4 m/s 冲击赛道！
+        elif self.state == "RUNNING":
+            # 🌟【第一性原理：绝对欧氏距离判定出口】
+            # 实时计算当前狗的坐标与目标终点 (3, 7) 之间的直线距离
+            dist_to_target = math.hypot(cx - self.target_x, cy - self.target_y)
             
-            # EMA 低通滤波防止舵机震颤
-            self.smoothed_error = self.filter_alpha * line_error + (1.0 - self.filter_alpha) * self.smoothed_error
-            wz = -self.kp_vision * self.smoothed_error
-            wz = max(min(wz, 0.5), -0.5) # 安全限幅
-            
-            self.dog.move(vx=vx, wz=wz)
-            self.logger.info(f"⚡ [Task 3] 冲锋中 | vx={vx:.2f}, wz={wz:.2f}, 偏差={line_error:.2f}")
-        else:
-            # 临时丢失，慢速直行盲走
-            self.dog.move(vx=0.15, wz=0.0)
-            self.logger.warn("⚠️ [Task 3] 丢失目标，降速直行搜索中...")
+            if dist_to_target < self.end_threshold:
+                self.logger.info(f"🏆 [Task 3] 抵达坐标点 ({cx:.2f}, {cy:.2f})，距离目标 (3,7) 仅差 {dist_to_target:.2f}m！第三赛段圆满通关！")
+                return True
 
-        return False # 暂时不考虑结束，永远返回 False
+            # 正常高速巡线
+            if line_valid:
+                vx = 0.45 
+                self.smoothed_error = 0.3 * line_error + 0.7 * getattr(self, 'smoothed_error', 0.0)
+                wz = -self.kp_vision * self.smoothed_error
+                wz = max(min(wz, 0.7), -0.7) 
+                self.dog.move(vx=vx, vy=0.0, wz=wz)
+            else:
+                self.dog.move(vx=0.15, vy=0.0, wz=0.0)
+                self.logger.warn(f"⚠️ [Task 3] 视野丢失，减速试探中... 距终点还剩 {dist_to_target:.2f}m", throttle_duration_sec=1.0)
+
+        return False

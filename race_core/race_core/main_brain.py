@@ -2,13 +2,12 @@
 import sys
 import math
 import rclpy
+from rclpy.qos import qos_profile_sensor_data
 from rclpy.node import Node
 from geometry_msgs.msg import Vector3, PoseStamped
+from sensor_msgs.msg import Imu
 import time
 
-# ==========================================
-# 挂载队友工具库
-# ==========================================
 sys.path.append('/usr/local/lib/python3.8/site-packages')
 sys.path.append('/usr/local/lib/python3/dist-packages')
 sys.path.append('/home/cyberdog_utils')
@@ -20,11 +19,13 @@ except ImportError as e:
     print(f"❌ 挂载底盘部件失败: {e}")
     sys.exit(1)
 
-# 使用绝对路径导入你的任务
+# 🌟 引入你的四大天王任务模块
 from race_core.tasks import Task1_StonePath
+from race_core.task2 import Task2_MockWildPearl
+from race_core.task3 import Task3_CurveCharge
+from race_core.task4 import Task4_TunnelTreasure
 
 def quat_to_yaw(q):
-    """四元数转欧拉角(Yaw)工具函数"""
     siny = 2.0 * (q.w * q.z + q.x * q.y)
     cosy = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
     return math.atan2(siny, cosy)
@@ -33,12 +34,11 @@ class GlobalBrain(Node):
     def __init__(self):
         super().__init__('global_brain')
         
-        # 订阅视觉和位姿
         self.create_subscription(Vector3, '/perception/yellow_line', self.line_cb, 10)
-        # 🌟 里程计修好了，直接订阅队友的 /pose 拿坐标和角度！
-        self.create_subscription(PoseStamped, '/pose', self.pose_cb, 10)
+# 统一使用 sensor_data QoS 以匹配 Gazebo 底层传感器
+        self.create_subscription(PoseStamped, '/pose', self.pose_cb, qos_profile_sensor_data)
+        self.create_subscription(Imu, '/imu', self.imu_cb, qos_profile_sensor_data)
         
-        # 🌟【第一性原理修复】：必须补齐 cx 和 cy 的坑位！
         self.perception_data = {
             'line_error': 0.0, 
             'hard_turn': 0.0, 
@@ -51,12 +51,19 @@ class GlobalBrain(Node):
         self.get_logger().info("正在连接底盘...")
         self.dog = Dog(gait=GAIT_TROT_10V5, step_height=0.08)
         
-        self.task1 = Task1_StonePath(self.dog, self.get_logger())
+        # 🌟 注册所有比赛任务
+        self.task_list = {
+            1: Task1_StonePath(self.dog, self.get_logger()),
+            2: Task2_MockWildPearl(self.dog, self.get_logger()),
+            3: Task3_CurveCharge(self.dog, self.get_logger()),
+            4: Task4_TunnelTreasure(self.dog, self.get_logger())
+        }
+        self.current_task_id = 1
         
         self.sys_state = "INIT_STAND"
         self.stand_start_time = 0.0
         self.timer = self.create_timer(0.1, self.fsm_loop)
-        self.get_logger().info("🧠 全局多任务主控大脑就绪！")
+        self.get_logger().info("🧠 全局四任务主控大脑就绪！")
 
     def line_cb(self, msg):
         self.perception_data['line_error'] = msg.x
@@ -64,10 +71,12 @@ class GlobalBrain(Node):
         self.perception_data['line_z'] = msg.z  
 
     def pose_cb(self, msg):
-        # 🌟 实时将坐标和偏航角塞进字典，供 Task1 提取！
         self.perception_data['current_yaw'] = quat_to_yaw(msg.pose.orientation)
         self.perception_data['cx'] = msg.pose.position.x
         self.perception_data['cy'] = msg.pose.position.y
+
+    def imu_cb(self, msg):
+        pass 
 
     def fsm_loop(self):
         if self.sys_state == "INIT_STAND":
@@ -78,15 +87,23 @@ class GlobalBrain(Node):
             
         elif self.sys_state == "WAIT_STAND":
             if time.time() - self.stand_start_time > 4.0:
-                self.get_logger().info("✅ 狗已站稳！启动赛段任务状态机。")
+                self.get_logger().info("✅ 狗已站稳！启动赛段任务流转。")
                 self.sys_state = "RUNNING_TASKS"
                 
         elif self.sys_state == "RUNNING_TASKS":
-            is_task_done = self.task1.execute(self.perception_data)
-            if is_task_done:
-                self.get_logger().info("🏁 任务一圆满完成！安全停车。")
+            current_task = self.task_list.get(self.current_task_id)
+            
+            if current_task is None:
+                self.get_logger().info("🎉 所有 4 个可用赛段已经通关！自动泊车。")
                 self.dog.stop()
                 self.timer.cancel()
+                return
+                
+            is_task_done = current_task.execute(self.perception_data)
+            
+            if is_task_done:
+                self.get_logger().info(f"🏆 赛段 {self.current_task_id} 结束，切入赛段 {self.current_task_id + 1}...")
+                self.current_task_id += 1
 
 def main():
     rclpy.init()
