@@ -1,33 +1,33 @@
 #!/usr/bin/env python3
-"""独立测试任务四：深隧寻珍
-前提：Gazebo + cyberdog_control + pose_broadcaster 已运行
+"""独立测试任务六：踢球
+前提：Gazebo + cyberdog_control + pose_broadcaster 已运行，football3 在场景中
 
 用法：
-  gz model -m robot -x 2.1 -y 7.3 -z 0.5 -Y 1.5708   # 传送到起点面朝北
+  gz model -m robot -x 1.5 -y 12.0 -z 0.5 -Y 0   # 传送到足球区附近面朝东
   source /opt/ros/galactic/setup.bash && source /home/cyberdog_sim/install/setup.bash
-  python3 test_task4.py
+  python3 test_task6.py
 """
 import sys, time, rclpy
 
 sys.path.append('/home/cyberdog_utils')
 from move.driver.dog import Dog
 from move.core.types import GAIT_TROT_10V5
-from task4 import Task4_TunnelTreasure
+from task6 import Task6_KickBall
 from geometry_msgs.msg import PoseStamped
 from rclpy.qos import qos_profile_sensor_data
 
 
 def main():
     rclpy.init()
-    node = rclpy.create_node("test_task4")
+    node = rclpy.create_node("test_task6")
 
     print("正在连接底盘...")
     dog = Dog(gait=GAIT_TROT_10V5, step_height=0.08)
     dog.stand()
     time.sleep(2.0)
-    print("✅ 就绪，启动任务四！")
+    print("✅ 就绪，启动任务六！")
 
-    task = Task4_TunnelTreasure(dog, node.get_logger())
+    task = Task6_KickBall(dog, node.get_logger())
     p_data = {"cx": None, "cy": None}
 
     def on_pose(msg):
@@ -45,13 +45,13 @@ def main():
 
     print(f"📍 初始位置: ({p_data['cx']:.2f}, {p_data['cy']:.2f})")
 
-    while rclpy.ok() and not task.is_done:
+    while rclpy.ok():
         rclpy.spin_once(node, timeout_sec=0.05)
         if task.execute(p_data):
             break
         time.sleep(0.05)
 
-    print("✅ 任务四测试完成！")
+    print("✅ 任务六测试完成！")
     dog.stop()
     node.destroy_node()
     rclpy.shutdown()

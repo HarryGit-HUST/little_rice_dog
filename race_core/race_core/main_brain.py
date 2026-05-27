@@ -19,11 +19,13 @@ except ImportError as e:
     print(f"❌ 挂载底盘部件失败: {e}")
     sys.exit(1)
 
-# 🌟 引入你的四大天王任务模块
+# 🌟 引入六大任务模块
 from race_core.tasks import Task1_StonePath
 from race_core.task2 import Task2_MockWildPearl
 from race_core.task3 import Task3_CurveCharge
 from race_core.task4 import Task4_TunnelTreasure
+from race_core.task5 import Task5_PlankBridge
+from race_core.task6 import Task6_KickBall
 
 def quat_to_yaw(q):
     siny = 2.0 * (q.w * q.z + q.x * q.y)
@@ -51,19 +53,21 @@ class GlobalBrain(Node):
         self.get_logger().info("正在连接底盘...")
         self.dog = Dog(gait=GAIT_TROT_10V5, step_height=0.08)
         
-        # 🌟 注册所有比赛任务
+        # 🌟 注册全部 6 个比赛任务
         self.task_list = {
             1: Task1_StonePath(self.dog, self.get_logger()),
             2: Task2_MockWildPearl(self.dog, self.get_logger()),
             3: Task3_CurveCharge(self.dog, self.get_logger()),
-            4: Task4_TunnelTreasure(self.dog, self.get_logger())
+            4: Task4_TunnelTreasure(self.dog, self.get_logger()),
+            5: Task5_PlankBridge(self.dog, self.get_logger()),
+            6: Task6_KickBall(self.dog, self.get_logger()),
         }
         self.current_task_id = 1
         
         self.sys_state = "INIT_STAND"
         self.stand_start_time = 0.0
         self.timer = self.create_timer(0.1, self.fsm_loop)
-        self.get_logger().info("🧠 全局四任务主控大脑就绪！")
+        self.get_logger().info("🧠 全局六任务主控大脑就绪！")
 
     def line_cb(self, msg):
         self.perception_data['line_error'] = msg.x

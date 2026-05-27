@@ -30,15 +30,31 @@ class Task3_CurveCharge:
         line_valid = (line_z == 1.0)
 
         if self.state == "INIT":
-            try:
-                from move.core.types import GAIT_TROT_FAST
-                self.dog.set_gait(GAIT_TROT_FAST)
-            except Exception:
-                self.dog.set_gait(9)
-                
-            self.dog.set_step_height(0.04) 
-            self.logger.info("⚡ [Task 3] 切入贴地极速步态，开始冲刺！")
-            self.state = "RUNNING"
+            # 第一性原理：task2 结束会 dog.stop() 趴下，不依赖其终态
+            import threading
+            def _prep():
+                self.logger.info("🐕 [Task 3] 站起并稳定...")
+                self.dog.stand()
+                time.sleep(2.0)
+                self.logger.info("🧭 [Task 3] 精确转向 90° (面朝 y+)...")
+                self.dog.turn_to(90.0, wz=1.0)
+                self.logger.info("🗺️ [Task 3] 微调至弯道入口 (-0.2, 4.0)...")
+                self.dog.go_to(tx=-0.2, ty=4.0, yaw_deg=90.0, max_speed=0.4, thr=0.15)
+                self._at_entry = True
+            self._at_entry = False
+            threading.Thread(target=_prep, daemon=True).start()
+            self.state = "GOTO_ENTRY"
+
+        elif self.state == "GOTO_ENTRY":
+            if self._at_entry:
+                try:
+                    from move.core.types import GAIT_TROT_FAST
+                    self.dog.set_gait(GAIT_TROT_FAST)
+                except Exception:
+                    self.dog.set_gait(9)
+                self.dog.set_step_height(0.04)
+                self.logger.info("⚡ [Task 3] 就位完毕，切入贴地极速步态，开始冲刺！")
+                self.state = "RUNNING"
 
         elif self.state == "RUNNING":
             # 🌟【第一性原理：绝对欧氏距离判定出口】
