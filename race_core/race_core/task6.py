@@ -35,13 +35,13 @@ class Task6_KickBall:
         try:
             chaser = BallChaser(self.dog, ball_name="football3")
             ok = chaser.chase(
-                target_x=3.0, target_y=13.0,
+                target_x=3.2, target_y=12.65,
                 done_x=3.0,
                 zone_xmin=0.8, zone_xmax=2.5,
                 zone_ymin=10.0, zone_ymax=14.3,
                 temp_target_x=1.7, temp_target_y=13.5,
                 kick_dist=0.1,
-                max_loops=20, loop_timeout=120,
+                max_loops=100, loop_timeout=300,
                 kick_x_acc=30.0, kick_z_acc=0.0,
                 kick_pitch=0.5, kick_crouch_z=0.06,
                 kick_heading=170,

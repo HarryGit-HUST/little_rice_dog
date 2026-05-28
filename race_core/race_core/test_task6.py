@@ -3,7 +3,7 @@
 前提：Gazebo + cyberdog_control + pose_broadcaster 已运行，football3 在场景中
 
 用法：
-  gz model -m robot -x 1.5 -y 12.0 -z 0.5 -Y 0   # 传送到足球区附近面朝东
+  gz model -m robot -x 1.5 -y 12.0 -z 0.5 -Y 3.1416   # 传送到足球区面朝西
   source /opt/ros/galactic/setup.bash && source /home/cyberdog_sim/install/setup.bash
   python3 test_task6.py
 """
@@ -25,9 +25,7 @@ def main():
     dog = Dog(gait=GAIT_TROT_10V5, step_height=0.08)
     dog.stand()
     time.sleep(2.0)
-    print("✅ 就绪，启动任务六！")
 
-    task = Task6_KickBall(dog, node.get_logger())
     p_data = {"cx": None, "cy": None}
 
     def on_pose(msg):
@@ -45,6 +43,7 @@ def main():
 
     print(f"📍 初始位置: ({p_data['cx']:.2f}, {p_data['cy']:.2f})")
 
+    task = Task6_KickBall(dog, node.get_logger())
     while rclpy.ok():
         rclpy.spin_once(node, timeout_sec=0.05)
         if task.execute(p_data):
