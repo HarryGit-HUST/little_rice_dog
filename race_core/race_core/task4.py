@@ -6,10 +6,10 @@ import sys
 # 挂载队友工具箱路径以引入语音播报
 sys.path.append('/home/cyberdog_utils')
 try:
-    from tts.speak import speak_blocked
+    from tts.speak import speak
 except ImportError:
     print("⚠️ 警告：无法挂载 tts 模块，使用 Mock 播报代替。")
-    def speak_blocked(text):
+    def speak(text):
         print(f"[MOCK TTS] 🔊: {text}")
         time.sleep(2.0)
 
@@ -70,8 +70,8 @@ class Task4_TunnelTreasure:
         
         
         go(2.05, 9.45)
-        speak_blocked("识别到限高杆")
-        speak_blocked("识别到足球")
+        speak("识别到限高杆")
+        speak("识别到足球")
         self.logger.info("🐕 启用蹲姿前进 (9.8 -> 10.8)...")
         self.dog.crouch_walk()
         
@@ -86,11 +86,11 @@ class Task4_TunnelTreasure:
         # --------------------------------------------------
         self.logger.info("=== 📍 开始子任务二 ===")
         go(1.1, 7.3, yaw_deg=90.0)
-        speak_blocked("识别到无法跨越障碍")
+        speak("识别到无法跨越障碍")
 
         go(1.5, 8.5, yaw_deg=90.0)
         go(1.1, 10.5, yaw_deg=90.0)
-        speak_blocked("识别到橙色小球")
+        speak("识别到橙色小球")
 
         go(1.0, 11.3, yaw_deg=90.0)
         self.logger.info("🎾 撞击球成功！原路返回...")
@@ -107,8 +107,8 @@ class Task4_TunnelTreasure:
         
         
         go(0.0, 8.9)
-        speak_blocked("识别到限高杆")
-        speak_blocked("识别到可乐瓶")
+        speak("识别到限高杆")
+        speak("识别到可乐瓶")
         self.logger.info("🐕 启用蹲姿前进 (8.9 -> 10.5)...")
         self.dog.crouch_walk()
         
